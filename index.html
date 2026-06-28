@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>🎬 CMO War Room</title>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  :root{--bg:#0e0f12;--panel:#16181d;--panel2:#1d2026;--border:#2a2e36;--text:#e7e9ee;--muted:#9aa1ac;
+        --accent:#e0b341;--good:#46b46b;--warn:#d98c3a;--bad:#d05a55;--blue:#5b9bd5;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Malgun Gothic",sans-serif}
+  a{color:var(--blue)}
+  .wrap{max-width:1180px;margin:0 auto;padding:18px}
+  header.top{display:flex;flex-wrap:wrap;align-items:center;gap:12px;border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:16px}
+  header.top h1{font-size:20px;margin:0;font-weight:600}
+  .pill{font-size:12px;padding:2px 9px;border-radius:999px;border:1px solid var(--border);color:var(--muted)}
+  .sig{background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:15px}
+  .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-left:auto}
+  button{background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:7px;padding:7px 12px;cursor:pointer;font-size:13px}
+  button:hover{border-color:#3a4150}
+  button.primary{background:var(--accent);color:#1a1407;border-color:var(--accent);font-weight:600}
+  input[type=text],input[type=password],textarea{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:7px;padding:8px 10px;font:inherit}
+  .grid{display:grid;grid-template-columns:1fr;gap:16px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+  .card h2{margin:0;font-size:17px;font-weight:600}
+  .chead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:14px 16px;border-bottom:1px solid var(--border)}
+  .rank{font-size:13px;color:var(--muted)}
+  .link{font-size:11px;padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.03em}
+  .link.high{background:#173b22;color:#7fe0a0} .link.med{background:#3a3414;color:#e6c757}
+  .link.low{background:#2b2230;color:#c79ad6} .link.none{background:#2a2e36;color:#9aa1ac}
+  .cbody{display:grid;grid-template-columns:1.15fr .85fr;gap:0}
+  @media(max-width:880px){.cbody{grid-template-columns:1fr}}
+  .left{padding:14px 16px;border-right:1px solid var(--border)} @media(max-width:880px){.left{border-right:none;border-bottom:1px solid var(--border)}}
+  .right{padding:14px 16px;display:flex;flex-direction:column;min-height:340px}
+  .mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+  .m{background:var(--panel2);border-radius:8px;padding:8px 10px}
+  .m .k{font-size:11px;color:var(--muted)} .m .v{font-size:16px;font-weight:600}
+  .star{color:var(--accent)}
+  .lyr{margin:8px 0;border-top:1px solid var(--border);padding-top:8px}
+  .lyr .lt{font-size:12px;color:var(--accent);font-weight:600;margin-bottom:2px}
+  table.comp{width:100%;border-collapse:collapse;font-size:12px;margin:6px 0}
+  table.comp th,table.comp td{text-align:left;padding:3px 6px;border-bottom:1px solid var(--border)}
+  table.comp th{color:var(--muted);font-weight:500}
+  .src{font-size:11px;color:var(--muted);margin-top:6px;word-break:break-all}
+  .gap{font-size:12px;color:var(--warn);margin-top:8px}
+  .chat{flex:1;display:flex;flex-direction:column}
+  .msgs{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px;padding-right:4px;max-height:360px}
+  .msg{padding:8px 11px;border-radius:9px;font-size:13px;white-space:pre-wrap}
+  .msg.u{background:#1f2a38;align-self:flex-end;max-width:88%}
+  .msg.a{background:var(--panel2);align-self:flex-start;max-width:95%}
+  .msg.sys{color:var(--muted);font-size:11px;align-self:center;background:none}
+  .cin{display:flex;gap:6px;margin-top:8px}
+  .cin textarea{flex:1;resize:vertical;min-height:38px;max-height:140px}
+  .row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+  .tiny{font-size:11px;color:var(--muted)}
+  .empty{color:var(--muted);text-align:center;padding:60px 20px}
+  .keybar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+  details>summary{cursor:pointer;color:var(--muted);font-size:12px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useRef} = React;
+const MODEL = "claude-opus-4-8";
+const FMT = n => (n==null||isNaN(n))?"—":Number(n).toLocaleString();
+const PCT = n => (typeof n==="number")? (n*100).toFixed(1)+"%" : (n||"—");
+
+const WAR_ROOM_SYS = `You are the Virtual CMO of Lewis Pictures in WAR ROOM mode — live strategy discussion with Lewis (CEO) over today's KOBIS market teardown. Augment judgment, don't lecture; every thread bends toward "so what do WE do."
+GROUNDING: answer from the provided datapack; quote exact metrics. 점유·독과점은 showCnt 기준. comp 수치는 제공된 Comp Library 매칭분만 — 없으면 "데이터 공백", 절대 날조 금지. 비교는 이 작품 '자기 장르' 기준. 우리 슬레이트와 연계성 낮으면 솔직히 "연계성 낮음"이라 말하고 일반 시장교훈만.
+STYLE: 한글 분석 / 영문 데이터 필드, 간결·의사결정 지향.`;
+
+function subjectContext(dp, s){
+  return `오늘 시그널: ${dp.signal_1line}\n\n[SUBJECT DATAPACK]\n`+JSON.stringify({
+    title:s.title, rank:s.rank, openDt:s.openDt, slate_link:s._slate_link,
+    boxoffice:s.boxoffice, metrics:s.metrics, detail:s.detail,
+    comps:s.comps, web:{wom_tone:s.web&&s.web.wom_tone, momentum:s.web&&s.web.momentum,
+      marketing_stage:s.web&&s.web.marketing_stage, press_framing:s.web&&s.web.press_framing},
+    preorder:s.preorder, teardown:s.teardown
+  },null,1)+`\n\n[OUR SLATE]\n`+JSON.stringify(dp.slate||[]);
+}
+
+async function callClaude(key, system, messages){
+  const r = await fetch("https://api.anthropic.com/v1/messages",{
+    method:"POST",
+    headers:{"x-api-key":key,"anthropic-version":"2023-06-01","content-type":"application/json",
+             "anthropic-dangerous-direct-browser-access":"true"},
+    body:JSON.stringify({model:MODEL,max_tokens:1500,system,messages})
+  });
+  if(!r.ok){const t=await r.text();throw new Error("HTTP "+r.status+": "+t.slice(0,300));}
+  const j = await r.json();
+  return (j.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
+}
+
+function Metrics({s}){
+  const m=s.metrics||{}, bo=s.boxoffice||{};
+  const cells=[
+    ["★상영점유(showCnt)",PCT(m.show_share),true],["스크린효율",FMT(m.screen_eff)],["상영회당",FMT(m.show_eff)],
+    ["객단가",m.per_cap?FMT(Math.round(m.per_cap))+"원":"—"],["누적관객",FMT(bo.audiAcc)],["전일대비",(bo.audiChange||"—")+"%"],
+  ];
+  return <div className="mgrid">{cells.map((c,i)=>(
+    <div className="m" key={i}><div className="k">{c[1+1]?<span className="star">{c[0]}</span>:c[0]}</div><div className="v">{c[1]}</div></div>
+  ))}</div>;
+}
+
+function Card({dp,s,apiKey}){
+  const [msgs,setMsgs]=useState([]);
+  const [input,setInput]=useState("");
+  const [busy,setBusy]=useState(false);
+  const boxRef=useRef(null);
+  useEffect(()=>{if(boxRef.current)boxRef.current.scrollTop=boxRef.current.scrollHeight;},[msgs,busy]);
+
+  async function send(text){
+    if(!text.trim()||busy)return;
+    if(!apiKey){setMsgs(m=>[...m,{r:"sys",t:"⚠️ 상단에 Anthropic API 키를 먼저 입력하세요."}]);return;}
+    const hist=[...msgs.filter(m=>m.r!=="sys"),{r:"u",t:text}];
+    setMsgs(hist);setInput("");setBusy(true);
+    try{
+      const sys=WAR_ROOM_SYS+"\n\n"+subjectContext(dp,s);
+      const api=hist.map(m=>({role:m.r==="u"?"user":"assistant",content:m.t}));
+      const out=await callClaude(apiKey,sys,api);
+      setMsgs(m=>[...m,{r:"a",t:out}]);
+    }catch(e){setMsgs(m=>[...m,{r:"sys",t:"오류: "+e.message}]);}
+    setBusy(false);
+  }
+  const td=s.teardown||{};
+  const L=(k,label)=> td[k] ? <div className="lyr" key={k}><div className="lt">{label}</div><div>{td[k]}</div></div> : null;
+  const comps=s.comps||[];
+  const link=(s._slate_link||"none").toLowerCase();
+  return (
+    <div className="card">
+      <div className="chead">
+        <h2>{s.rank}. {s.title}</h2>
+        <span className="rank">{s.openDt} 개봉 · {s.detail&&s.detail["투자배급사"]||"—"}</span>
+        <span className={"link "+link}>슬레이트 연계 {s._slate_link||"?"}</span>
+      </div>
+      <div className="cbody">
+        <div className="left">
+          <Metrics s={s}/>
+          {s._signal_line && <div style={{fontSize:13,marginBottom:8}}><b>시그널:</b> {s._signal_line}</div>}
+          {L("A","A. 박스오피스 의미")}{L("B","B. Comp 궤적 (자기 장르)")}{L("C","C. 관객·마케팅")}{L("D","D. 제작·배급 DNA")}{L("E","E. ⚡ 슬레이트 전이")}
+          {comps.length>0 && <div className="lyr"><div className="lt">Comp Library 매칭</div>
+            <table className="comp"><thead><tr><th>title</th><th>final</th><th>×open</th><th>outcome</th></tr></thead>
+            <tbody>{comps.map((c,i)=><tr key={i}><td>{c.title}</td><td>{FMT(c.final)}</td><td>{c.multiplier??"—"}</td><td>{c.outcome||"—"}</td></tr>)}</tbody></table></div>}
+          {Array.isArray(s._data_gaps)&&s._data_gaps.length>0 && <div className="gap">⚠️ {s._data_gaps.join(" · ")}</div>}
+          {s.web&&Array.isArray(s.web.sources)&&s.web.sources.length>0 &&
+            <details><summary>출처 {s.web.sources.length}</summary>
+              <div className="src">{s.web.sources.map((x,i)=><span key={i}><a href={x.url} target="_blank" rel="noopener">[{i+1}]</a> </span>)}</div></details>}
+        </div>
+        <div className="right">
+          <div className="row">
+            <button onClick={()=>send("이 작품의 시장 교훈을 우리 슬레이트로 TRANSFER 해줘. 연계성 낮으면 솔직히 말하고 일반 교훈만. datapack 기준, 구체 액션.")}>⚡ Transfer to slate</button>
+            <button onClick={()=>send("이 작품을 DRILL: A–D 레이어가 실제로 뭘 의미하는지, showCnt 점유와 comp 궤적 중심으로 더 깊게.")}>🔎 Drill</button>
+            <button onClick={()=>send("가장 가까운 comp과 COMPARE: 멀티플·showCnt 점유·per_cap으로 어디에 위치하는지.")}>⚖ Compare</button>
+          </div>
+          <div className="chat">
+            <div className="msgs" ref={boxRef}>
+              {msgs.length===0 && <div className="tiny">이 작품에 대해 질문하거나 위 버튼을 눌러 시작. (datapack이 컨텍스트로 주입됨)</div>}
+              {msgs.map((m,i)=><div key={i} className={"msg "+(m.r==="u"?"u":m.r==="a"?"a":"sys")}>{m.t}</div>)}
+              {busy && <div className="msg sys">…생각 중</div>}
+            </div>
+            <div className="cin">
+              <textarea value={input} placeholder="질문 (Enter 전송, Shift+Enter 줄바꿈)" onChange={e=>setInput(e.target.value)}
+                onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send(input);}}}/>
+              <button className="primary" onClick={()=>send(input)} disabled={busy}>전송</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function App(){
+  const [dp,setDp]=useState(null);
+  const [err,setErr]=useState("");
+  const [apiKey,setApiKey]=useState(localStorage.getItem("cmo_key")||"");
+  function loadFile(f){const rd=new FileReader();rd.onload=()=>{try{const j=JSON.parse(rd.result);setDp(j);setErr("");localStorage.setItem("cmo_dp",rd.result);}catch(e){setErr("JSON 파싱 실패: "+e.message);}};rd.readAsText(f);}
+  useEffect(()=>{const c=localStorage.getItem("cmo_dp");if(c){try{setDp(JSON.parse(c));}catch(e){}}},[]);
+  function saveKey(v){setApiKey(v);localStorage.setItem("cmo_key",v);}
+  return (
+    <div className="wrap"
+      onDragOver={e=>e.preventDefault()}
+      onDrop={e=>{e.preventDefault();if(e.dataTransfer.files[0])loadFile(e.dataTransfer.files[0]);}}>
+      <header className="top">
+        <h1>🎬 CMO War Room</h1>
+        {dp && <span className="pill">{dp.date} · subjects {dp.subjects?dp.subjects.length:0}</span>}
+        <div className="controls">
+          <label style={{cursor:"pointer"}}><span className="pill">📂 datapack.json 불러오기</span>
+            <input type="file" accept=".json,application/json" style={{display:"none"}} onChange={e=>e.target.files[0]&&loadFile(e.target.files[0])}/></label>
+        </div>
+      </header>
+      <div className="keybar">
+        <span className="tiny">Anthropic API 키</span>
+        <input type="password" value={apiKey} placeholder="sk-ant-..." style={{width:280}} onChange={e=>saveKey(e.target.value)}/>
+        <span className="tiny">(localStorage에만 저장 · 로컬 전용 · 채팅 시 api.anthropic.com 직접 호출, 모델 {MODEL})</span>
+      </div>
+      {err && <div className="sig" style={{borderLeftColor:"var(--bad)"}}>{err}</div>}
+      {!dp && <div className="empty">out/datapack_&lt;날짜&gt;.json 을 불러오거나 이 창에 끌어다 놓으세요.<br/>(파이프라인 <code>--run</code>이 automation/out/ 에 생성)</div>}
+      {dp && <div className="sig"><b>▶ 오늘의 전략 시그널</b><br/>{dp.signal_1line}</div>}
+      {dp && <div className="grid">{(dp.subjects||[]).map((s,i)=><Card key={i} dp={dp} s={s} apiKey={apiKey}/>)}</div>}
+      {dp && dp.slate && <div className="sig" style={{marginTop:16,borderLeftColor:"var(--blue)"}}>
+        <b>🎯 우리 슬레이트</b><br/>{(dp.slate||[]).map((x,i)=><span key={i} className="pill" style={{marginRight:6}}>{x.title} ({x.stage}{x.genre&&x.genre.length?"/"+x.genre.join(","):""})</span>)}</div>}
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
