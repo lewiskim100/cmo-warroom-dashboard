@@ -1,0 +1,4 @@
+# 수집 산출물(행 시계열·datapack)은 커밋하지 않음
+*
+!.gitkeep
+!.gitignore
